@@ -1,0 +1,49 @@
+version: 2.1
+jobs:
+  markdown-link-check:
+    docker:
+    - image: cimg/node:20.18
+    resource_class: small
+    steps:
+    - checkout
+    - run:
+        name: Check all Markdown links with existing 3.8.7 policy
+        command: 'set -euo pipefail
+
+          mkdir -p link-reports
+
+          npm install --prefix /tmp/mlc markdown-link-check@3.8.7 > link-reports/install.log
+          2>&1
+
+          set +e
+
+          timeout --signal=TERM --kill-after=10s 9m bash -c ''
+
+          rc=0; while IFS= read -r -d "" f; do
+
+          args=(); if [ -f mlc_config.json ]; then args=(--config mlc_config.json);
+          fi
+
+          /tmp/mlc/node_modules/.bin/markdown-link-check "$f" "${args[@]}" || rc=1
+
+          done < <(find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*"
+          -print0); exit "$rc"
+
+          '' > link-reports/links.log 2>&1
+
+          rc=$?
+
+          echo "$rc" > link-reports/status.txt
+
+          exit 0'
+        no_output_timeout: 10m
+    - store_artifacts:
+        path: link-reports
+        destination: link-reports
+    - run:
+        name: Return link-check result
+        command: exit "$(cat link-reports/status.txt)"
+workflows:
+  markdown-links:
+    jobs:
+    - markdown-link-check
