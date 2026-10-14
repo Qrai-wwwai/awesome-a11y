@@ -1,3 +1,4 @@
+# Restored from the existing push-based Markdown link check.
 version: 2.1
 jobs:
   markdown-link-check:
